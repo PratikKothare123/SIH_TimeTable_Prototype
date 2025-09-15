@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Timetable Architect - Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .login-bg {
+            background-color: #1e3a8a;
+            background-image: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            space-x: 3;
+            padding: 0.75rem 1rem;
+            color: #4b5563;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .sidebar-link:hover {
+            background-color: #f3f4f6;
+        }
+        .sidebar-link.active {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+            font-weight: 600;
+        }
+        .sidebar-icon {
+            stroke-width: 1.5;
+        }
+        .form-input {
+            margin-top: 0.25rem;
+            display: block;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            box-shadow: sm;
+        }
+         .form-input:focus {
+            outline: none;
+            --tw-ring-color: #3b82f6;
+            border-color: #3b82f6;
+         }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- LOGIN PAGE -->
+        <div id="login-page" class="min-h-screen flex items-center justify-center login-bg p-4">
+            <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 space-y-6">
+                <div class="text-center">
+                    <h1 class="text-3xl font-bold text-gray-800">AI Timetable Architect</h1>
+                    <p class="text-gray-500 mt-2">Sign in to your portal</p>
+                </div>
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label for="userId" class="text-sm font-medium text-gray-700">User ID</label>
+                        <input id="userId" name="userId" type="text" required class="form-input" placeholder="e.g., admin, T001, S123">
+                    </div>
+                    <div>
+                        <label for="password" class="text-sm font-medium text-gray-700">Password</label>
+                        <input id="password" name="password" type="password" required class="form-input" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label for="role" class="text-sm font-medium text-gray-700">Role</label>
+                        <select id="role" name="role" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-50 border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <option value="admin">Admin</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="student">Student</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Login
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- MAIN DASHBOARD (Hidden by default) -->
+        <div id="dashboard-view" class="hidden">
+            <div class="flex h-screen bg-gray-100">
+                <!-- Sidebar -->
+                <div class="w-64 bg-white shadow-md flex flex-col">
+                    <div class="p-6 text-2xl font-bold text-gray-800 border-b">
+                        AITA
+                    </div>
+                    <nav id="sidebar-nav" class="flex-1 p-4 space-y-2"></nav>
+                    <div class="p-4 border-t">
+                        <button id="logout-btn" class="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md">
+                            <i data-feather="log-out" class="w-4 h-4"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Main Content -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+                        <h1 id="header-title" class="text-xl font-semibold text-gray-800"></h1>
+                        <div class="flex items-center space-x-4">
+                            <i data-feather="bell" class="text-gray-500 cursor-pointer"></i>
+                            <img src="https://placehold.co/40x40/E2E8F0/4A5568?text=U" alt="User Avatar" class="w-10 h-10 rounded-full">
+                        </div>
+                    </header>
+                    <main id="main-content" class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6"></main>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Placeholder -->
+        <div id="modal-placeholder"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM ELEMENTS ---
+            const loginPage = document.getElementById('login-page');
+            const dashboardView = document.getElementById('dashboard-view');
+            const loginForm = document.getElementById('login-form');
+            const logoutBtn = document.getElementById('logout-btn');
+            const sidebarNav = document.getElementById('sidebar-nav');
+            const headerTitle = document.getElementById('header-title');
+            const mainContent = document.getElementById('main-content');
+            const modalPlaceholder = document.getElementById('modal-placeholder');
+
+            // --- MOCK DATA ---
+            let mockData = {
+                courses: [
+                    { id: 'CS101', name: 'Intro to Programming', credits: 4, prereq: 'None', tag: 'Core/Engineering', equipment: 'Computer Lab' },
+                    { id: 'MA201', name: 'Calculus II', credits: 3, prereq: 'MA101', tag: 'Core/Science', equipment: 'None' },
+                    { id: 'HU301', name: 'Modern Philosophy', credits: 3, prereq: 'None', tag: 'Elective/Arts', equipment: 'None' },
+                ],
+                faculty: [
+                    { id: 'T001', name: 'Dr. Alan Turing', subjects: 'CS101, CS502', workload: 10, unavailable: 'None' },
+                    { id: 'T002', name: 'Dr. Ada Lovelace', subjects: 'MA201, MA305', workload: 12, unavailable: 'Fridays' },
+                ],
+                rooms: [
+                    { id: 'A-101', capacity: 60, type: 'Lecture Hall', equipment: 'Projector' },
+                    { id: 'Lab-3', capacity: 40, type: 'Computer Lab', equipment: 'PCs, Projector' },
+                ],
+            };
+
+            // --- TEMPLATES & RENDERING ---
+            
+            // Function to generate a table from data
+            function createTableHTML(headers, data, renderRow) {
+                let table = `<div class="overflow-x-auto bg-white rounded-lg shadow"><table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50"><tr>`;
+                headers.forEach(h => table += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`);
+                table += `<th class="relative px-6 py-3"><span class="sr-only">Actions</span></th></tr></thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+                data.forEach(item => table += renderRow(item));
+                table += `</tbody></table></div>`;
+                return table;
+            }
+
+            // Page content templates
+            const templates = {
+                adminDashboard: () => `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow flex items-center justify-between">
+                            <div><p class="text-sm text-gray-500">Total Courses</p><p class="text-3xl font-bold text-gray-800">${mockData.courses.length}</p></div>
+                            <div class="bg-blue-100 p-3 rounded-full"><i data-feather="book-open" class="text-blue-600"></i></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow flex items-center justify-between">
+                            <div><p class="text-sm text-gray-500">Total Faculty</p><p class="text-3xl font-bold text-gray-800">${mockData.faculty.length}</p></div>
+                            <div class="bg-green-100 p-3 rounded-full"><i data-feather="users" class="text-green-600"></i></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow flex items-center justify-between">
+                            <div><p class="text-sm text-gray-500">Classrooms</p><p class="text-3xl font-bold text-gray-800">${mockData.rooms.length}</p></div>
+                            <div class="bg-yellow-100 p-3 rounded-full"><i data-feather="grid" class="text-yellow-600"></i></div>
+                        </div>
+                        <button class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center space-x-2">
+                            <i data-feather="play-circle"></i><span>Generate Timetable</span>
+                        </button>
+                    </div>
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Master Timetable (Sample)</h2>
+                    <!-- Placeholder for timetable -->
+                    <div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">Master timetable view would be displayed here.</div>
+                `,
+                manageCourses: () => `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-700">Manage Courses</h2>
+                        <button id="add-course-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-blue-700 transition duration-300">Add Course</button>
+                    </div>
+                    ${createTableHTML(
+                        ['Code', 'Name', 'Credits', 'Tag'],
+                        mockData.courses,
+                        c => `<tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${c.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${c.name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${c.credits}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">${c.tag}</span></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><a href="#" class="text-indigo-600 hover:text-indigo-900">Edit</a></td>
+                        </tr>`
+                    )}
+                `,
+                manageFaculty: () => `
+                     <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-700">Manage Faculty</h2>
+                        <button class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-blue-700 transition duration-300">Add Faculty</button>
+                    </div>
+                     ${createTableHTML(
+                        ['ID', 'Name', 'Subjects', 'Workload'],
+                        mockData.faculty,
+                        f => `<tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${f.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${f.name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${f.subjects}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${f.workload} hrs/week</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><a href="#" class="text-indigo-600 hover:text-indigo-900">Edit</a></td>
+                        </tr>`
+                    )}
+                `,
+                manageRooms: () => `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-700">Manage Rooms</h2>
+                        <button class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-blue-700 transition duration-300">Add Room</button>
+                    </div>
+                    ${createTableHTML(
+                        ['ID', 'Capacity', 'Type', 'Equipment'],
+                        mockData.rooms,
+                        r => `<tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${r.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${r.capacity}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${r.type}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${r.equipment}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><a href="#" class="text-indigo-600 hover:text-indigo-900">Edit</a></td>
+                        </tr>`
+                    )}
+                `,
+                nepConfig: () => `
+                    <h2 class="text-2xl font-semibold text-gray-700 mb-6">NEP 2020 Configuration</h2>
+                    <div class="bg-white p-8 rounded-lg shadow space-y-8">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800">Multidisciplinary Structures</h3>
+                            <p class="text-sm text-gray-500 mb-4">Define rules for how students can mix subjects from different disciplines.</p>
+                            <textarea class="form-input" rows="3" placeholder="e.g., Engineering students can take up to 2 electives from the Arts discipline."></textarea>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800">Credit System Rules</h3>
+                             <p class="text-sm text-gray-500 mb-4">Set up rules for credit banks and transfers.</p>
+                            <label class="flex items-center"><input type="checkbox" class="rounded" checked> Enable Academic Bank of Credits</label>
+                        </div>
+                         <div>
+                            <h3 class="text-lg font-medium text-gray-800">General Constraints</h3>
+                             <p class="text-sm text-gray-500 mb-4">Define soft and hard constraints for the AI engine.</p>
+                             <input type="text" class="form-input" value="No first-year classes after 4 PM.">
+                             <input type="text" class="form-input mt-2" value="Ensure a 1-hour break between theory and lab sessions.">
+                        </div>
+                        <div class="text-right">
+                             <button class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow hover:bg-blue-700 transition duration-300">Save Config</button>
+                        </div>
+                    </div>
+                `,
+                facultyDashboard: () => `<div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">Faculty Schedule & Preferences View</div>`,
+                studentDashboard: () => `<div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">Student Timetable & Elective Request View</div>`,
+
+            };
+
+            const courseModalHTML = `
+                <div id="course-modal" class="modal-backdrop">
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-8 transform transition-all">
+                        <h3 class="text-xl font-bold mb-4">Add New Course</h3>
+                        <form id="course-form" class="space-y-4">
+                            <!-- Form fields -->
+                            <div><label>Course Code</label><input type="text" class="form-input"></div>
+                            <div><label>Course Name</label><input type="text" class="form-input"></div>
+                            <div><label>Credits</label><input type="number" class="form-input"></div>
+                            <div><label>Discipline Tag</label><input type="text" class="form-input" placeholder="e.g., Core/Engineering"></div>
+                            <div class="flex justify-end space-x-4 pt-4">
+                                <button type="button" id="cancel-modal" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save Course</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // --- APP LOGIC ---
+            function renderContent(pageKey) {
+                if(templates[pageKey]) {
+                    mainContent.innerHTML = templates[pageKey]();
+                    feather.replace();
+
+                    // Add specific event listeners for the new content
+                    if(pageKey === 'manageCourses') {
+                        document.getElementById('add-course-btn').addEventListener('click', () => {
+                            modalPlaceholder.innerHTML = courseModalHTML;
+                            document.getElementById('cancel-modal').addEventListener('click', () => modalPlaceholder.innerHTML = '');
+                            document.getElementById('course-form').addEventListener('submit', (e) => {
+                                e.preventDefault();
+                                // In a real app, you would collect form data and update mockData
+                                modalPlaceholder.innerHTML = '';
+                            });
+                        });
+                    }
+                }
+            }
+            
+            function updateSidebar(role) {
+                let navLinks = '';
+                const commonLinks = [
+                    { key: 'adminDashboard', icon: 'home', label: 'Dashboard' },
+                    { key: 'manageCourses', icon: 'book-open', label: 'Manage Courses' },
+                    { key: 'manageFaculty', icon: 'users', label: 'Manage Faculty' },
+                    { key: 'manageRooms', icon: 'grid', label: 'Manage Rooms' },
+                    { key: 'nepConfig', icon: 'settings', label: 'NEP 2020 Config' },
+                ];
+                // In a real app, this would be role-specific
+                commonLinks.forEach(link => {
+                    navLinks += `<a data-page="${link.key}" class="sidebar-link ${link.key === 'adminDashboard' ? 'active' : ''}"><i data-feather="${link.icon}" class="w-5 h-5 mr-3 sidebar-icon"></i><span>${link.label}</span></a>`;
+                });
+                sidebarNav.innerHTML = navLinks;
+                
+                sidebarNav.querySelectorAll('.sidebar-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        sidebarNav.querySelector('.active').classList.remove('active');
+                        e.currentTarget.classList.add('active');
+                        renderContent(e.currentTarget.dataset.page);
+                    });
+                });
+            }
+
+            function showDashboard(role) {
+                loginPage.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+
+                let defaultPage = '';
+                switch(role) {
+                    case 'admin':
+                        headerTitle.textContent = 'Admin Dashboard';
+                        updateSidebar(role);
+                        defaultPage = 'adminDashboard';
+                        break;
+                    case 'faculty':
+                        headerTitle.textContent = 'Faculty Portal';
+                        sidebarNav.innerHTML = ''; // Add faculty-specific nav here
+                        defaultPage = 'facultyDashboard';
+                        break;
+                    case 'student':
+                        headerTitle.textContent = 'Student Portal';
+                        sidebarNav.innerHTML = ''; // Add student-specific nav here
+                        defaultPage = 'studentDashboard';
+                        break;
+                }
+                renderContent(defaultPage);
+            }
+
+            function showLogin() {
+                dashboardView.classList.add('hidden');
+                loginPage.classList.remove('hidden');
+            }
+
+            // --- EVENT LISTENERS ---
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const role = document.getElementById('role').value;
+                showDashboard(role);
+            });
+
+            logoutBtn.addEventListener('click', showLogin);
+            
+            // Initial call to render icons on login page if any
+            feather.replace();
+        });
+    </script>
+</body>
+</html>
+
